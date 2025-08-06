@@ -1,6 +1,10 @@
 name: "Run Ansible Playbook"
-description: "Install Ansible, setup SSH, create backend .env, and run playbook"
+description: "Install Ansible, setup SSH, create backend .env, and run playbook with environment targeting"
 inputs:
+  environment:  # NEW INPUT
+    description: "Environment to target (test/prod)"
+    required: true
+    default: "test"
   server-ip:
     description: "IP address of the remote server"
     required: true
@@ -41,7 +45,8 @@ runs:
         mkdir -p ~/.ssh
         echo "${{ inputs.ssh-key }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        echo "${{ inputs.server-ip }} ansible_user=azureuser" > ${{ inputs.inventory-path }}
+        echo "[${{ inputs.environment }}servers]" > ${{ inputs.inventory-path }}
+        echo "${{ inputs.server-ip }} ansible_user=azureuser" >> ${{ inputs.inventory-path }}
         ssh-keyscan ${{ inputs.server-ip }} >> ~/.ssh/known_hosts
       shell: bash
 
@@ -64,7 +69,13 @@ runs:
       shell: bash
 
     - name: Execute Ansible Playbook
-      run: ansible-playbook -i ${{ inputs.inventory-path }} ${{ inputs.playbook-path }} --private-key ~/.ssh/id_rsa
+      run: |
+        ansible-playbook \
+          -i ${{ inputs.inventory-path }} \
+          ${{ inputs.playbook-path }} \
+          --private-key ~/.ssh/id_rsa \
+          --limit ${{ inputs.environment }}servers
       env:
         ANSIBLE_HOST_KEY_CHECKING: "False"
+        TARGET_ENV: "${{ inputs.environment }}"  # For playbook safety checks
       shell: bash
