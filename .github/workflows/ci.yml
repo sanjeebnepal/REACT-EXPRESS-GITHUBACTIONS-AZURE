@@ -10,6 +10,11 @@ jobs:
   build-and-test:
     runs-on: self-hosted  # self-hosted linux runner for your builds/tests
     steps:
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '22'
+          
       - name: Checkout code
         uses: actions/checkout@v3
 
