@@ -1,12 +1,25 @@
 name: "Run Node.js Tests"
 description: "Install dependencies and run unit tests in a specified directory"
+
 inputs:
   working-directory:
     description: "Directory to run npm commands"
     required: true
+
 runs:
   using: "composite"
   steps:
+    - name: Create .env file in backend
+      if: ${{ inputs.working-directory == 'backend' }}
+      run: |
+        echo "DB_HOST=${{ env.DB_HOST }}" >> .env
+        echo "DB_USER=${{ env.DB_USER }}" >> .env
+        echo "DB_PASS=${{ env.DB_PASS }}" >> .env
+        echo "DB_PORT=${{ env.DB_PORT }}" >> .env
+        echo "DB_NAME=${{ env.DB_NAME }}" >> .env
+      working-directory: ${{ inputs.working-directory }}
+      shell: bash
+
     - name: Install dependencies
       run: npm install
       working-directory: ${{ inputs.working-directory }}
@@ -15,4 +28,4 @@ runs:
     - name: Run tests
       run: npm test
       working-directory: ${{ inputs.working-directory }}
-      shell: bash  #bash 
+      shell: bash

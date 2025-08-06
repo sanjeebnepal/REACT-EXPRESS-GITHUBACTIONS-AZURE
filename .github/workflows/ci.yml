@@ -14,21 +14,26 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '22'
-          
+
       - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Run backend tests
         uses: ./.github/actions/run-tests
         with:
-          working-directory: ./backend
+          working-directory: backend
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASS: ${{ secrets.DB_PASS }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_NAME: ${{ secrets.DB_NAME }}
 
       - name: Run frontend tests
         uses: ./.github/actions/run-tests
         with:
           working-directory: ./frontend
 
-      # Optional: Prepare test-results folders if you generate any reports
       - name: Prepare test-results folders
         run: |
           mkdir -p ./backend/test-results
