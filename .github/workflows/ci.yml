@@ -62,6 +62,11 @@ jobs:
           ssh-key: ${{ secrets.TEST_SERVER_SSH_KEY }}
           playbook-path: ansible/playbook.yml
           inventory-path: ansible/hosts.ini
+          db-host: ${{ secrets.DB_HOST }}
+          db-user: ${{ secrets.DB_USER }}
+          db-pass: ${{ secrets.DB_PASS }}
+          db-port: ${{ secrets.DB_PORT }}
+          db-name: ${{ secrets.DB_NAME }}
 
   deploy-prod:
     runs-on: ubuntu-latest
@@ -78,3 +83,8 @@ jobs:
           ssh-key: ${{ secrets.PROD_SERVER_SSH_KEY }}
           playbook-path: ansible/playbook.yml
           inventory-path: ansible/hosts.ini
+          db-host: ${{ secrets.DB_HOST }}
+          db-user: ${{ secrets.DB_USER }}
+          db-pass: ${{ secrets.DB_PASS }}
+          db-port: ${{ secrets.DB_PORT }}
+          db-name: ${{ secrets.DB_NAME }}

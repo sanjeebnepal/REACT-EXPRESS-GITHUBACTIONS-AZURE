@@ -1,5 +1,5 @@
 name: "Run Ansible Playbook"
-description: "Install Ansible, setup SSH, create .env on remote server, and run a playbook on a remote server"
+description: "Install Ansible, setup SSH, create .env on remote server, and run a playbook"
 inputs:
   server-ip:
     description: "IP address of the remote server"
@@ -13,11 +13,28 @@ inputs:
   inventory-path:
     description: "Path to the Ansible inventory file"
     required: true
+  db-host:
+    description: "Database host"
+    required: true
+  db-user:
+    description: "Database username"
+    required: true
+  db-pass:
+    description: "Database password"
+    required: true
+  db-port:
+    description: "Database port"
+    required: true
+  db-name:
+    description: "Database name"
+    required: true
+
 runs:
   using: "composite"
   steps:
     - name: Install Ansible and sshpass
       run: sudo apt-get update && sudo apt-get install -y ansible sshpass
+      shell: bash
 
     - name: Setup SSH key
       run: |
@@ -31,11 +48,11 @@ runs:
       run: |
         ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no azureuser@${{ inputs.server-ip }} << EOF
         cat > /home/azureuser/app/backend/.env << EOL
-        DB_HOST=${{ secrets.DB_HOST }}
-        DB_USER=${{ secrets.DB_USER }}
-        DB_PASS=${{ secrets.DB_PASS }}
-        DB_PORT=${{ secrets.DB_PORT }}
-        DB_NAME=${{ secrets.DB_NAME }}
+        DB_HOST=${{ inputs.db-host }}
+        DB_USER=${{ inputs.db-user }}
+        DB_PASS=${{ inputs.db-pass }}
+        DB_PORT=${{ inputs.db-port }}
+        DB_NAME=${{ inputs.db-name }}
         EOL
         EOF
       shell: bash
@@ -44,3 +61,4 @@ runs:
       run: ansible-playbook -i ${{ inputs.inventory-path }} ${{ inputs.playbook-path }} --private-key ~/.ssh/id_rsa
       env:
         ANSIBLE_HOST_KEY_CHECKING: "False"
+      shell: bash
