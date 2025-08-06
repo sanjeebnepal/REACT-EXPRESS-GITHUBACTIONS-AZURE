@@ -15,4 +15,4 @@ runs:
     - name: Run tests
       run: npm test
       working-directory: ${{ inputs.working-directory }}
-      shell: bash
+      shell: bash  #bash 
