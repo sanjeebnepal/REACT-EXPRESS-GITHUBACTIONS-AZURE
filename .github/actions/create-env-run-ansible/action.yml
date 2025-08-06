@@ -1,17 +1,17 @@
 name: "Run Ansible Playbook"
-description: "Install Ansible, setup SSH, create .env on remote server, and run a playbook"
+description: "Install Ansible, setup SSH, create backend .env, and run playbook"
 inputs:
   server-ip:
     description: "IP address of the remote server"
     required: true
   ssh-key:
-    description: "SSH private key (as a secret)"
+    description: "SSH private key"
     required: true
   playbook-path:
-    description: "Path to the Ansible playbook"
+    description: "Path to Ansible playbook"
     required: true
   inventory-path:
-    description: "Path to the Ansible inventory file"
+    description: "Path to Ansible inventory"
     required: true
   db-host:
     description: "Database host"
@@ -32,32 +32,38 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Install Ansible and sshpass
+    - name: Install Ansible
       run: sudo apt-get update && sudo apt-get install -y ansible sshpass
       shell: bash
 
-    - name: Setup SSH key
+    - name: Configure SSH access
       run: |
         mkdir -p ~/.ssh
         echo "${{ inputs.ssh-key }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H ${{ inputs.server-ip }} >> ~/.ssh/known_hosts
+        echo "${{ inputs.server-ip }} ansible_user=azureuser" > ${{ inputs.inventory-path }}
+        ssh-keyscan ${{ inputs.server-ip }} >> ~/.ssh/known_hosts
       shell: bash
 
-    - name: Create .env file on remote server
+    - name: Create backend .env remotely
       run: |
-        ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no azureuser@${{ inputs.server-ip }} << EOF
-        cat > /home/azureuser/app/backend/.env << EOL
+        ssh -i ~/.ssh/id_rsa azureuser@${{ inputs.server-ip }} "mkdir -p /home/azureuser/app/backend"
+        ssh -i ~/.ssh/id_rsa azureuser@${{ inputs.server-ip }} "cat > /home/azureuser/app/backend/.env" <<EOF
         DB_HOST=${{ inputs.db-host }}
         DB_USER=${{ inputs.db-user }}
         DB_PASS=${{ inputs.db-pass }}
         DB_PORT=${{ inputs.db-port }}
         DB_NAME=${{ inputs.db-name }}
-        EOL
+        NODE_ENV=production
+        PORT=5000
         EOF
       shell: bash
 
-    - name: Run Ansible Playbook
+    - name: Verify .env file
+      run: ssh -i ~/.ssh/id_rsa azureuser@${{ inputs.server-ip }} "cat /home/azureuser/app/backend/.env"
+      shell: bash
+
+    - name: Execute Ansible Playbook
       run: ansible-playbook -i ${{ inputs.inventory-path }} ${{ inputs.playbook-path }} --private-key ~/.ssh/id_rsa
       env:
         ANSIBLE_HOST_KEY_CHECKING: "False"
