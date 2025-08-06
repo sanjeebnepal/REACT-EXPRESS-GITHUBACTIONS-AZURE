@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: [self-hosted, linux]  # self-hosted linux runner for your builds/tests
+    runs-on: self-hosted  # self-hosted linux runner for your builds/tests
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
