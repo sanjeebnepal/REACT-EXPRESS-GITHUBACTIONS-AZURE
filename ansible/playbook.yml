@@ -9,11 +9,12 @@
         update_cache: yes
         upgrade: dist
 
-    - name: Install prerequisites for Node.js and jq
+    - name: Install prerequisites
       apt:
         name:
           - curl
           - jq
+          - git  # Added git package explicitly
         state: present
 
     - name: Install nvm (Node Version Manager) for azureuser
@@ -57,14 +58,21 @@
         group: azureuser
         mode: '0755'
 
-    - name: Clone or update application repository
+    - name: Clone or update application repository (HTTPS)
       git:
-        repo: 'git@github.com:sanjeebnepal/REACT-EXPRESS-GITHUBACTIONS-AZURE.git'
+        repo: 'https://github.com/sanjeebnepal/REACT-EXPRESS-GITHUBACTIONS-AZURE.git'
         dest: /home/azureuser/app
         version: main
         force: yes
         update: yes
+        accept_hostkey: yes  # Kept for general SSH host verification
       become_user: azureuser
+
+    - name: Verify repository was cloned
+      stat:
+        path: /home/azureuser/app/package.json
+      register: repo_check
+      failed_when: not repo_check.stat.exists
 
     - name: Install application dependencies
       become_user: azureuser
@@ -128,6 +136,17 @@
         export NVM_DIR="$HOME/.nvm"
         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
         pm2 startup systemd -u azureuser --hp /home/azureuser
+      args:
+        executable: /bin/bash
+      environment:
+        HOME: /home/azureuser
+
+    - name: Verify pm2 startup configuration
+      become_user: azureuser
+      shell: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        pm2 save
       args:
         executable: /bin/bash
       environment:
