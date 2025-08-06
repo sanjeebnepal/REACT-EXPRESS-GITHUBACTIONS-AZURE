@@ -56,11 +56,17 @@
       environment:
         HOME: /home/azureuser
 
-    - name: Clone application repository
+    - name: Reset application repository
       become_user: azureuser
       shell: |
-        rm -rf /home/azureuser/app 2>/dev/null || true
-        git clone https://github.com/sanjeebnepal/REACT-EXPRESS-GITHUBACTIONS-AZURE.git /home/azureuser/app
+        if [ -d "/home/azureuser/app/.git" ]; then
+          cd /home/azureuser/app
+          git fetch origin main
+          git reset --hard origin/main
+          git clean -fd
+        else
+          git clone https://github.com/sanjeebnepal/REACT-EXPRESS-GITHUBACTIONS-AZURE.git /home/azureuser/app
+        fi
       args:
         executable: /bin/bash
       environment:
@@ -77,60 +83,52 @@
           DB_PORT={{ db_port }}
           DB_NAME={{ db_name }}
           NODE_ENV=production
-          PORT=5000
+          PORT=4000
         mode: '0600'
 
-    - name: Install application dependencies
+    - name: Install backend dependencies
       become_user: azureuser
       shell: |
         export NVM_DIR="$HOME/.nvm"
         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-        npm install
-      args:
-        chdir: /home/azureuser/app
-        executable: /bin/bash
-      environment:
-        HOME: /home/azureuser
-
-    - name: Restart backend if running
-      become_user: azureuser
-      shell: |
-        export NVM_DIR="$HOME/.nvm"
-        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-        pm2 restart backend || true
+        cd /home/azureuser/app/backend && npm install
       args:
         executable: /bin/bash
       environment:
         HOME: /home/azureuser
 
-    - name: Start backend if not running
+    - name: Install frontend dependencies
       become_user: azureuser
       shell: |
         export NVM_DIR="$HOME/.nvm"
         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-        pm2 jlist | jq -r .[].name | grep -q '^backend$' || pm2 start /home/azureuser/app/backend/server.js --name backend
+        cd /home/azureuser/app/frontend && npm install
       args:
         executable: /bin/bash
       environment:
         HOME: /home/azureuser
 
-    - name: Restart frontend if running
+    - name: Restart backend service
       become_user: azureuser
       shell: |
         export NVM_DIR="$HOME/.nvm"
         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-        pm2 restart frontend || true
+        cd /home/azureuser/app/backend
+        pm2 delete backend 2>/dev/null || true
+        pm2 start server.js --name backend
       args:
         executable: /bin/bash
       environment:
         HOME: /home/azureuser
 
-    - name: Start frontend if not running
+    - name: Restart frontend service
       become_user: azureuser
       shell: |
         export NVM_DIR="$HOME/.nvm"
         [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-        pm2 jlist | jq -r .[].name | grep -q '^frontend$' || pm2 start npm --name frontend -- start --prefix /home/azureuser/app/frontend
+        cd /home/azureuser/app/frontend
+        pm2 delete frontend 2>/dev/null || true
+        pm2 start "npm start" --name frontend
       args:
         executable: /bin/bash
       environment:
