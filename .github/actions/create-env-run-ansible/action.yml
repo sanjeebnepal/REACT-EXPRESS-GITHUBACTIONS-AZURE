@@ -1,7 +1,7 @@
 name: "Run Ansible Playbook"
-description: "Install Ansible, setup SSH, create backend .env, and run playbook with environment targeting"
+description: "Install Ansible, setup SSH, and run playbook with environment targeting"
 inputs:
-  environment:  # NEW INPUT
+  environment:
     description: "Environment to target (test/prod)"
     required: true
     default: "test"
@@ -50,32 +50,18 @@ runs:
         ssh-keyscan ${{ inputs.server-ip }} >> ~/.ssh/known_hosts
       shell: bash
 
-    - name: Create backend .env remotely
-      run: |
-        ssh -i ~/.ssh/id_rsa azureuser@${{ inputs.server-ip }} "mkdir -p /home/azureuser/app/backend"
-        ssh -i ~/.ssh/id_rsa azureuser@${{ inputs.server-ip }} "cat > /home/azureuser/app/backend/.env" <<EOF
-        DB_HOST=${{ inputs.db-host }}
-        DB_USER=${{ inputs.db-user }}
-        DB_PASS=${{ inputs.db-pass }}
-        DB_PORT=${{ inputs.db-port }}
-        DB_NAME=${{ inputs.db-name }}
-        NODE_ENV=production
-        PORT=5000
-        EOF
-      shell: bash
-
-    - name: Verify .env file
-      run: ssh -i ~/.ssh/id_rsa azureuser@${{ inputs.server-ip }} "cat /home/azureuser/app/backend/.env"
-      shell: bash
-
     - name: Execute Ansible Playbook
       run: |
         ansible-playbook \
           -i ${{ inputs.inventory-path }} \
           ${{ inputs.playbook-path }} \
           --private-key ~/.ssh/id_rsa \
-          --limit ${{ inputs.environment }}servers
+          --limit ${{ inputs.environment }}servers \
+          -e "db_host=${{ inputs.db-host }}" \
+          -e "db_user=${{ inputs.db-user }}" \
+          -e "db_pass=${{ inputs.db-pass }}" \
+          -e "db_port=${{ inputs.db-port }}" \
+          -e "db_name=${{ inputs.db-name }}"
       env:
         ANSIBLE_HOST_KEY_CHECKING: "False"
-        TARGET_ENV: "${{ inputs.environment }}"  # For playbook safety checks
       shell: bash
