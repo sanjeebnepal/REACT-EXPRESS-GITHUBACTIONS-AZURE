@@ -71,12 +71,14 @@
     - name: Reset git repository
       become_user: azureuser
       shell: |
-        cd /home/azureuser/app && \
-        git init && \
-        git remote add origin https://github.com/sanjeebnepal/REACT-EXPRESS-GITHUBACTIONS-AZURE.git || true && \
-        git fetch origin main && \
-        git reset --hard origin/main && \
-        git clean -fd
+        cd /home/azureuser/app
+        if [ -d .git ]; then
+          git fetch origin main
+          git reset --hard origin/main
+          git clean -fd
+        else
+          git clone https://github.com/sanjeebnepal/REACT-EXPRESS-GITHUBACTIONS-AZURE.git .
+        fi
       args:
         executable: /bin/bash
         chdir: /home/azureuser/app
