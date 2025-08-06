@@ -71,7 +71,7 @@
       environment:
         HOME: /home/azureuser
 
-    - name: Create .env file with database configuration
+    - name: Create .env file with database configuration (backend)
       become_user: azureuser
       copy:
         dest: /home/azureuser/app/backend/.env
@@ -83,6 +83,14 @@
           DB_NAME={{ db_name }}
           NODE_ENV=production
           PORT=4000
+        mode: '0600'
+
+    - name: Create .env file for frontend with dynamic backend URL
+      become_user: azureuser
+      copy:
+        dest: /home/azureuser/app/frontend/.env
+        content: |
+          REACT_APP_BACKEND_URL=http://{{ inventory_hostname }}:4000
         mode: '0600'
 
     - name: Install backend dependencies
