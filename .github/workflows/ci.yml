@@ -56,7 +56,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Run Ansible Playbook on Test Server
-        uses: ./.github/actions/create-env-run-ansible
+        uses: ./.github/actions/run-ansible
         with:
           environment: "test"
           server-ip: ${{ secrets.TEST_SERVER_IP }}
@@ -78,7 +78,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Deploy Application to Production Server
-        uses: ./.github/actions/create-env-run-ansible
+        uses: ./.github/actions/run-ansible
         with:
           environment: "prod"
           server-ip: ${{ secrets.PROD_SERVER_IP }}
