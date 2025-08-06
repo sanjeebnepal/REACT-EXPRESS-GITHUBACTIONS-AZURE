@@ -56,32 +56,13 @@
       environment:
         HOME: /home/azureuser
 
-    - name: Ensure app directory structure exists
-      file:
-        path: "{{ item }}"
-        state: directory
-        owner: azureuser
-        group: azureuser
-        mode: '0755'
-      with_items:
-        - /home/azureuser/app
-        - /home/azureuser/app/backend
-        - /home/azureuser/app/frontend
-
-    - name: Reset git repository
+    - name: Clone application repository
       become_user: azureuser
       shell: |
-        cd /home/azureuser/app
-        if [ -d .git ]; then
-          git fetch origin main
-          git reset --hard origin/main
-          git clean -fd
-        else
-          git clone https://github.com/sanjeebnepal/REACT-EXPRESS-GITHUBACTIONS-AZURE.git .
-        fi
+        rm -rf /home/azureuser/app/* 2>/dev/null || true
+        git clone https://github.com/sanjeebnepal/REACT-EXPRESS-GITHUBACTIONS-AZURE.git /home/azureuser/app
       args:
         executable: /bin/bash
-        chdir: /home/azureuser/app
       environment:
         HOME: /home/azureuser
 
@@ -98,12 +79,6 @@
           NODE_ENV=production
           PORT=5000
         mode: '0600'
-
-    - name: Verify repository was updated
-      stat:
-        path: /home/azureuser/app/package.json
-      register: repo_check
-      failed_when: not repo_check.stat.exists
 
     - name: Install application dependencies
       become_user: azureuser
