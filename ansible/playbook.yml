@@ -59,7 +59,7 @@
     - name: Clone application repository
       become_user: azureuser
       shell: |
-        rm -rf /home/azureuser/app/* 2>/dev/null || true
+        rm -rf /home/azureuser/app 2>/dev/null || true
         git clone https://github.com/sanjeebnepal/REACT-EXPRESS-GITHUBACTIONS-AZURE.git /home/azureuser/app
       args:
         executable: /bin/bash
