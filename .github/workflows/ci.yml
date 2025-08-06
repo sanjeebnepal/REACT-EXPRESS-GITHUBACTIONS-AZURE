@@ -1,0 +1,70 @@
+name: CI/CD Pipeline with Ansible Configuration
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: [self-hosted, linux]  # self-hosted linux runner for your builds/tests
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run backend tests
+        uses: ./.github/actions/run-tests
+        with:
+          working-directory: ./backend
+
+      - name: Run frontend tests
+        uses: ./.github/actions/run-tests
+        with:
+          working-directory: ./frontend
+
+      # Optional: Prepare test-results folders if you generate any reports
+      - name: Prepare test-results folders
+        run: |
+          mkdir -p ./backend/test-results
+          mkdir -p ./frontend/test-results
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: |
+            ./backend/test-results
+            ./frontend/test-results
+
+  ansible-configure-test:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run Ansible Playbook on Test Server
+        uses: ./.github/actions/create-env-run-ansible
+        with:
+          server-ip: ${{ secrets.TEST_SERVER_IP }}
+          ssh-key: ${{ secrets.TEST_SERVER_SSH_KEY }}
+          playbook-path: ansible/playbook.yml
+          inventory-path: ansible/hosts.ini
+
+  deploy-prod:
+    runs-on: ubuntu-latest
+    needs: ansible-configure-test
+    if: github.event_name == 'workflow_dispatch'  # manual trigger for production deploy
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy Application to Production Server
+        uses: ./.github/actions/create-env-run-ansible
+        with:
+          server-ip: ${{ secrets.PROD_SERVER_IP }}
+          ssh-key: ${{ secrets.PROD_SERVER_SSH_KEY }}
+          playbook-path: ansible/playbook.yml
+          inventory-path: ansible/hosts.ini

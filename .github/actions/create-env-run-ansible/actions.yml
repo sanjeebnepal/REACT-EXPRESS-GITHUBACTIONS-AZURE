@@ -1,0 +1,46 @@
+name: "Run Ansible Playbook"
+description: "Install Ansible, setup SSH, create .env on remote server, and run a playbook on a remote server"
+inputs:
+  server-ip:
+    description: "IP address of the remote server"
+    required: true
+  ssh-key:
+    description: "SSH private key (as a secret)"
+    required: true
+  playbook-path:
+    description: "Path to the Ansible playbook"
+    required: true
+  inventory-path:
+    description: "Path to the Ansible inventory file"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Install Ansible and sshpass
+      run: sudo apt-get update && sudo apt-get install -y ansible sshpass
+
+    - name: Setup SSH key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ inputs.ssh-key }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ inputs.server-ip }} >> ~/.ssh/known_hosts
+      shell: bash
+
+    - name: Create .env file on remote server
+      run: |
+        ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no azureuser@${{ inputs.server-ip }} << EOF
+        cat > /home/azureuser/app/backend/.env << EOL
+        DB_HOST=${{ secrets.DB_HOST }}
+        DB_USER=${{ secrets.DB_USER }}
+        DB_PASS=${{ secrets.DB_PASS }}
+        DB_PORT=${{ secrets.DB_PORT }}
+        DB_NAME=${{ secrets.DB_NAME }}
+        EOL
+        EOF
+      shell: bash
+
+    - name: Run Ansible Playbook
+      run: ansible-playbook -i ${{ inputs.inventory-path }} ${{ inputs.playbook-path }} --private-key ~/.ssh/id_rsa
+      env:
+        ANSIBLE_HOST_KEY_CHECKING: "False"

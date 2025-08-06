@@ -1,0 +1,135 @@
+---
+- name: Configure Application Server
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Update apt cache and upgrade packages
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Install prerequisites for Node.js and jq
+      apt:
+        name:
+          - curl
+          - jq
+        state: present
+
+    - name: Install nvm (Node Version Manager) for azureuser
+      become_user: azureuser
+      shell: |
+        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
+      args:
+        executable: /bin/bash
+      environment:
+        HOME: /home/azureuser
+
+    - name: Install Node.js v22.17.0 using nvm
+      become_user: azureuser
+      shell: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        nvm install 22.17.0
+        nvm use 22.17.0
+        nvm alias default 22.17.0
+      args:
+        executable: /bin/bash
+      environment:
+        HOME: /home/azureuser
+
+    - name: Install pm2 globally with npm from nvm
+      become_user: azureuser
+      shell: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        npm install -g pm2
+      args:
+        executable: /bin/bash
+      environment:
+        HOME: /home/azureuser
+
+    - name: Ensure app directory exists
+      file:
+        path: /home/azureuser/app
+        state: directory
+        owner: azureuser
+        group: azureuser
+        mode: '0755'
+
+    - name: Clone or update application repository
+      git:
+        repo: 'git@github.com:sanjeebnepal/REACT-EXPRESS-GITHUBACTIONS-AZURE.git'
+        dest: /home/azureuser/app
+        version: main
+        force: yes
+        update: yes
+        accept_hostkey: yes
+      become_user: azureuser
+
+    - name: Install application dependencies
+      become_user: azureuser
+      shell: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        npm install
+      args:
+        chdir: /home/azureuser/app
+        executable: /bin/bash
+      environment:
+        HOME: /home/azureuser
+
+    - name: Restart backend if running
+      become_user: azureuser
+      shell: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        pm2 restart backend || true
+      args:
+        executable: /bin/bash
+      environment:
+        HOME: /home/azureuser
+
+    - name: Start backend if not running
+      become_user: azureuser
+      shell: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        pm2 jlist | jq -r .[].name | grep -q '^backend$' || pm2 start /home/azureuser/app/backend/server.js --name backend
+      args:
+        executable: /bin/bash
+      environment:
+        HOME: /home/azureuser
+
+    - name: Restart frontend if running
+      become_user: azureuser
+      shell: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        pm2 restart frontend || true
+      args:
+        executable: /bin/bash
+      environment:
+        HOME: /home/azureuser
+
+    - name: Start frontend if not running
+      become_user: azureuser
+      shell: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        pm2 jlist | jq -r .[].name | grep -q '^frontend$' || pm2 start npm --name frontend -- start --prefix /home/azureuser/app/frontend
+      args:
+        executable: /bin/bash
+      environment:
+        HOME: /home/azureuser
+
+    - name: Setup pm2 to start on boot
+      become_user: azureuser
+      shell: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        pm2 startup systemd -u azureuser --hp /home/azureuser
+      args:
+        executable: /bin/bash
+      environment:
+        HOME: /home/azureuser

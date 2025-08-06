@@ -1,0 +1,16 @@
+name: "Run Node.js Tests"
+description: "Install dependencies and run unit tests in a specified directory"
+inputs:
+  working-directory:
+    description: "Directory to run npm commands"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Install dependencies
+      run: npm install
+      working-directory: ${{ inputs.working-directory }}
+
+    - name: Run tests
+      run: npm test
+      working-directory: ${{ inputs.working-directory }}
