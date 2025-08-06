@@ -64,7 +64,6 @@
         version: main
         force: yes
         update: yes
-        accept_hostkey: yes
       become_user: azureuser
 
     - name: Install application dependencies
