@@ -14,7 +14,7 @@
         name:
           - curl
           - jq
-          - git  # Added git package explicitly
+          - git
         state: present
 
     - name: Install nvm (Node Version Manager) for azureuser
@@ -58,15 +58,64 @@
         group: azureuser
         mode: '0755'
 
-    - name: Clone or update application repository (HTTPS)
+    - name: Check if .env exists
+      become_user: azureuser
+      stat:
+        path: /home/azureuser/app/backend/.env
+      register: env_file
+
+    - name: Backup existing .env file
+      become_user: azureuser
+      command: >
+        mv /home/azureuser/app/backend/.env /tmp/app_backend.env
+      when: env_file.stat.exists
+      args:
+        removes: /home/azureuser/app/backend/.env
+        creates: /tmp/app_backend.env
+
+    - name: Clean app directory (preserve .env)
+      become_user: azureuser
+      shell: |
+        # Remove everything except backend directory (where .env is stored)
+        find /home/azureuser/app -mindepth 1 -maxdepth 1 -not -name backend -print0 | xargs -0 rm -rf
+        # Clean backend directory except .env
+        if [ -d "/home/azureuser/app/backend" ]; then
+          find /home/azureuser/app/backend -mindepth 1 -maxdepth 1 -not -name .env -print0 | xargs -0 rm -rf
+        fi
+      args:
+        executable: /bin/bash
+
+    - name: Clone or update application repository
       git:
         repo: 'https://github.com/sanjeebnepal/REACT-EXPRESS-GITHUBACTIONS-AZURE.git'
         dest: /home/azureuser/app
         version: main
         force: yes
         update: yes
-        accept_hostkey: yes  # Kept for general SSH host verification
       become_user: azureuser
+
+    - name: Restore .env file if it existed
+      become_user: azureuser
+      command: >
+        mv /tmp/app_backend.env /home/azureuser/app/backend/.env
+      when: env_file.stat.exists
+      args:
+        removes: /tmp/app_backend.env
+        creates: /home/azureuser/app/backend/.env
+
+    - name: Create default .env if missing
+      become_user: azureuser
+      copy:
+        dest: /home/azureuser/app/backend/.env
+        content: |
+          DB_HOST={{ DB_HOST }}
+          DB_USER={{ DB_USER }}
+          DB_PASS={{ DB_PASS }}
+          DB_PORT={{ DB_PORT }}
+          DB_NAME={{ DB_NAME }}
+          NODE_ENV=production
+          PORT=5000
+      when: not env_file.stat.exists
 
     - name: Verify repository was cloned
       stat:
@@ -141,7 +190,7 @@
       environment:
         HOME: /home/azureuser
 
-    - name: Verify pm2 startup configuration
+    - name: Save pm2 process list
       become_user: azureuser
       shell: |
         export NVM_DIR="$HOME/.nvm"
